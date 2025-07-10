@@ -1,11 +1,11 @@
-import { Hono, Context } from 'hono';
+import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import path from 'path';
 
 const app = new Hono();
 
 // Dynamic function loader
-let dynamicHandler: ((c: Context) => Promise<Response>) | null = null;
+let dynamicHandler: ((req: Request) => Promise<any>) | null = null;
 
 async function loadHandler() {
   try {
@@ -22,7 +22,9 @@ async function loadHandler() {
 app.all('*', async (c) => {
   if (dynamicHandler) {
     try {
-      return await dynamicHandler(c);
+      const request = c.req.raw;
+      const result = await dynamicHandler(request);
+      return c.json(result);
     } catch (error) {
       console.error('Error executing handler:', error);
       return c.json({ error: 'Handler execution failed' }, 500);
@@ -39,7 +41,6 @@ async function startServer() {
   await loadHandler();
   
   console.log(`Starting FaaS Runtime on port ${port}`);
-  
   serve({
     fetch: app.fetch,
     port
