@@ -1,22 +1,11 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import path from 'path';
+import { loadHandler, type HandlerFunction } from './handler-loader.js';
 
 const app = new Hono();
 
 // Dynamic function loader
-let dynamicHandler: ((req: Request) => Promise<any>) | null = null;
-
-async function loadHandler() {
-  try {
-    const handlerPath = path.join(process.cwd(), 'functions', 'handler.ts');
-    const handlerModule = await import(handlerPath);
-    dynamicHandler = handlerModule.handler;
-  } catch (error) {
-    console.error('Failed to load handler:', error);
-    dynamicHandler = null;
-  }
-}
+let dynamicHandler: HandlerFunction | null = null;
 
 // Catch-all handler for all paths and methods
 app.all('*', async (c) => {
@@ -38,7 +27,7 @@ const port = parseInt(process.env.PORT || '3000');
 
 async function startServer() {
   // Load handler on startup
-  await loadHandler();
+  dynamicHandler = await loadHandler();
   
   console.log(`Starting FaaS Runtime on port ${port}`);
   serve({
